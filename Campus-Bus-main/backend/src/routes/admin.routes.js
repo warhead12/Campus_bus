@@ -1,6 +1,4 @@
 import { Router } from 'express';
-import { recaptchaMiddleware1 } from '../middlewares/recaptchaForReg.middlewares.js';
-import { recaptchaMiddleware2 } from '../middlewares/recaptchaForLog.middlewares.js';
 import { 
    registerAdmin, 
    loginAdmin,
@@ -18,13 +16,11 @@ import { verifyJWT } from "../middlewares/auth.middlewares.js";
 const router = Router();
 
 router.post('/register',
-   recaptchaMiddleware1,
    upload.fields([{ name: 'avatar', maxCount: 1 }]),
    registerAdmin
 );
 
 router.post('/login',
-   recaptchaMiddleware2, 
    loginAdmin
 );
 

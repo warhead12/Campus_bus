@@ -1,9 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import ReCAPTCHA from 'react-google-recaptcha';
-// import useAuth from './AuthContext';
 import { useAuth } from '../AuthContext';
+import { getRequestErrorMessage } from '../utils/requestErrorMessage';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -12,12 +11,10 @@ const Login = () => {
   });
   const [errors, setErrors] = useState({
     email: '',
-    password: '',
-    recaptcha: ''
+    password: ''
   });
-  const recaptchaRef = useRef(null);
   const navigate = useNavigate();
-  const { login } = useAuth(); // Get login function from AuthContext
+  const { login } = useAuth();
 
   const emailRegex = /^[^\s@]+@iiita\.ac\.in$/;
   const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
@@ -29,7 +26,6 @@ const Login = () => {
       [name]: value
     });
 
-    // Validate input
     let error = '';
     if (name === 'email' && !emailRegex.test(value)) {
       error = 'Invalid email format';
@@ -42,45 +38,33 @@ const Login = () => {
     });
   };
 
-  const handleRecaptchaChange = (token) => {
-    setErrors({
-      ...errors,
-      recaptcha: token ? '' : 'Please complete the reCAPTCHA'
-    });
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Execute reCAPTCHA
-    const token = await recaptchaRef.current.executeAsync();
-    setErrors({
-      ...errors,
-      recaptcha: token ? '' : 'Please complete the reCAPTCHA'
-    });
-
-    // Check if there are any errors
-    if (errors.email || errors.password || !token) {
+    if (errors.email || errors.password) {
       alert('Please fix the errors in the form');
       return;
     }
 
     try {
-      const response = await axios.post('http://localhost:4000/api/v1/admins/login', {
-        ...formData,
-        recaptchaToken: token // Include the reCAPTCHA token in the payload
-      }, {
-        withCredentials: true, // Ensures that cookies are sent with the request
+      const response = await axios.post('http://localhost:4000/api/v1/admins/login', formData, {
+        withCredentials: true
       });
-      const { accessToken, refreshToken } = response.data.data;
-      
-      // Use the login function from AuthProvider
-      login(accessToken, refreshToken);
+      const payload = response.data?.data;
+      const accessToken = payload?.accessToken;
+      const refreshToken = payload?.refreshToken;
+      if (!accessToken || !refreshToken) {
+        alert(
+          response.data?.message ||
+            'Login succeeded but the server response was missing tokens.'
+        );
+        return;
+      }
 
-      // Redirect to the admin home page
+      login(accessToken, refreshToken);
       navigate('/home-admin');
     } catch (error) {
-      alert(error.response.data.message);
+      alert(getRequestErrorMessage(error));
     }
   };
 
@@ -91,10 +75,8 @@ const Login = () => {
     });
     setErrors({
       email: '',
-      password: '',
-      recaptcha: ''
+      password: ''
     });
-    recaptchaRef.current.reset();
   };
 
   return (
@@ -126,15 +108,6 @@ const Login = () => {
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
               />
               {errors.password && <span className="text-red-500 text-sm">{errors.password}</span>}
-            </div>
-            <div>
-              <ReCAPTCHA
-                ref={recaptchaRef}
-                sitekey="6Le6zP4pAAAAAGRLXQczs0i35H7VBVfaU-jZ_jfN" // Replace with your reCAPTCHA v3 site key
-                size="invisible"
-                onChange={handleRecaptchaChange}
-              />
-              {errors.recaptcha && <span className="text-red-500 text-sm">{errors.recaptcha}</span>}
             </div>
             <div className="flex justify-between">
               <button
